@@ -2,6 +2,27 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { differenceInMinutes, parseISO, format } from "date-fns";
 
+// TODO fix types
+
+type LinesByDay = {
+  [date: string]: string[];
+};
+
+type HoursByDayAndClient = {
+  [date: string]: HoursByClient | StartStopByClient;
+};
+
+type StartStopByClient = {
+  [clientName: string]: {
+    start: string[];
+    stop: string[];
+  };
+};
+
+type HoursByClient = {
+  [clientName: string]: number;
+};
+
 function calculateTimeRange(start = [], stop = []) {
   const timeInMinutes =
     start.reduce((prev, time, index) => {
@@ -41,13 +62,13 @@ async function groupFileContentyDate(content: string) {
 
 async function parseContent(content: string) {
   const contentByDate = await groupFileContentyDate(content);
+  const calculatedTimesByDay: any = {};
 
-  const calculatedTimesByDay = {};
-
-  contentByDate.forEach((lines, date) => {
-    const timesByClients = {};
+  contentByDate.forEach((lines: string[], date) => {
+    let timesByClients: StartStopByClient = {};
     lines.forEach((line) => {
-      const [client, action, datetime] = line.split(",");
+      const [client, _action, datetime] = line.split(",");
+      const action = _action as "start" | "stop";
 
       const clientData = timesByClients[client] || {
         start: [],
@@ -59,14 +80,14 @@ async function parseContent(content: string) {
       };
     });
 
-    calculatedTimesByDay[date] = timesByClients;
+    calculatedTimesByDay[date as string] = timesByClients;
   });
 
   return calculatedTimesByDay;
 }
 
-function calculateTimeByDay(timesByDay) {
-  const hoursByDayAndClient = {};
+function calculateTimeByDay(timesByDay: any): HoursByDayAndClient {
+  const hoursByDayAndClient: HoursByDayAndClient = {};
   for (let day in timesByDay) {
     console.log(timesByDay[day]);
     hoursByDayAndClient[day] = calculateTimeByClient(timesByDay[day]);
@@ -75,8 +96,8 @@ function calculateTimeByDay(timesByDay) {
   return hoursByDayAndClient;
 }
 
-function calculateTimeByClient(timeByClients) {
-  const hoursByClient = {};
+function calculateTimeByClient(timeByClients: any) {
+  const hoursByClient: HoursByClient = {};
   for (let client in timeByClients) {
     const { start, stop } = timeByClients[client];
 
@@ -87,15 +108,9 @@ function calculateTimeByClient(timeByClients) {
   return hoursByClient;
 }
 
-type TimeData = {
-  [date: string]: {
-    [clientName: string]: number;
-  };
-};
-
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<TimeData>
+  res: NextApiResponse<HoursByDayAndClient>
 ) {
   const lines = req.body;
 

@@ -7,7 +7,9 @@ interface FileForm {
   timeTrackerFile: FileList;
 }
 
-function ResultList({ result }) {
+// TODO fix types
+
+function ResultList({ result }: any) {
   return (
     <div className="">
       <ul>
