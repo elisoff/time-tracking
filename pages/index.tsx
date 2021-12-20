@@ -1,10 +1,12 @@
+import { useState } from "react";
 import Head from "next/head";
 import { useForm } from "react-hook-form";
 import { ErrorMessage } from "@hookform/error-message";
-import { useState } from "react";
 
 interface FileForm {
   timeTrackerFile: FileList;
+  startDate: Date;
+  endDate: Date;
 }
 
 // TODO fix types
@@ -13,19 +15,10 @@ function ResultList({ result }: any) {
   return (
     <div className="">
       <ul>
-        {Object.keys(result).map((date, idx) => {
-          const byClient = result[date];
-
+        {Object.keys(result).map((client, idx) => {
           return (
             <li key={idx}>
-              Date: {date}
-              <ul>
-                {Object.keys(byClient).map((client, idx2) => (
-                  <li key={idx2}>
-                    {client} - {byClient[client]}
-                  </li>
-                ))}
-              </ul>
+              {client} - {result[client]}
             </li>
           );
         })}
@@ -38,6 +31,7 @@ export default function Home() {
   const {
     handleSubmit,
     register,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<FileForm>();
   const [result, setResult] = useState(null);
@@ -45,11 +39,14 @@ export default function Home() {
   const onSubmit = async (data: FileForm) => {
     console.log(data.timeTrackerFile[0]);
 
-    const response = await fetch("/api/process", {
-      method: "POST",
-      headers: { "Content-Type": "multipart/form-data" },
-      body: data.timeTrackerFile[0],
-    }).then((value) => {
+    const response = await fetch(
+      `/api/process?start=${data.startDate}&end=${data.endDate}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "multipart/form-data" },
+        body: data.timeTrackerFile[0],
+      }
+    ).then((value) => {
       if (value.ok) {
         return value.json();
       }
@@ -81,6 +78,15 @@ export default function Home() {
             })}
           />
           <ErrorMessage errors={errors} name="timeTrackerFile" />
+          <label className="font-bold">Start and end date</label>
+          <input
+            type="date"
+            {...register("startDate", { required: "This field is required" })}
+          />
+          <input
+            type="date"
+            {...register("endDate", { required: "This field is required" })}
+          />
 
           <button
             className="text-blue-900 bg-blue-100 px-2 py-2 disabled:opacity-75 cursor-pointer"
@@ -89,7 +95,14 @@ export default function Home() {
             Submit
           </button>
         </form>
-        {result && <ResultList result={result} />}
+        {result && (
+          <div>
+            <h2>
+              Times between {getValues("startDate")} and {getValues("endDate")}
+            </h2>
+            <ResultList result={result} />
+          </div>
+        )}
       </main>
     </div>
   );
