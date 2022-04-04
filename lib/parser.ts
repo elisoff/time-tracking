@@ -107,7 +107,10 @@ export function Parser(content: string) {
     return hoursByDayAndClient;
   }
 
-  const lines = content.split("\n");
+  const lines = content
+    .split("\n")
+    .filter((line) => line.split(",").length === 3)
+    .map((line) => line.replace("\r", ""));
   const timesByDateAndClient = parseContentByDateAndClient();
   const calculatedTimesByDay = groupCalculatedHoursByDay();
 

@@ -18,7 +18,7 @@ function ResultList({ result }: any) {
         {Object.keys(result).map((client, idx) => {
           return (
             <li key={idx}>
-              {client} - {result[client]}
+              {client} - {Number(result[client]).toFixed(2)}
             </li>
           );
         })}
@@ -37,14 +37,18 @@ export default function Home() {
   const [result, setResult] = useState(null);
 
   const onSubmit = async (data: FileForm) => {
-    console.log(data.timeTrackerFile[0]);
+    const formData = new FormData();
+
+    const files = data.timeTrackerFile;
+    for (let i = 0; i < files.length; i++) {
+      formData.append(`file${i}`, files.item(i) as Blob);
+    }
 
     const response = await fetch(
       `/api/process?start=${data.startDate}&end=${data.endDate}`,
       {
         method: "POST",
-        headers: { "Content-Type": "multipart/form-data" },
-        body: data.timeTrackerFile[0],
+        body: formData,
       }
     ).then((value) => {
       if (value.ok) {
@@ -71,6 +75,7 @@ export default function Home() {
           <label className="font-bold">Select your file</label>
           <input
             type="file"
+            multiple
             accept=".csv"
             className="required:border-red-500"
             {...register("timeTrackerFile", {
