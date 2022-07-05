@@ -1,4 +1,5 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
+import { parseISO } from "date-fns";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Parser } from "../../lib/parser";
 
@@ -16,7 +17,18 @@ export default async function handler(
 
   const parser = Parser(lines);
 
-  const data = parser.calculateTimeBetweenDateRange(start, end);
+  const interval = {
+    start: parseISO(start),
+    end: parseISO(end),
+  };
 
-  res.status(200).json(data);
+  const calculatedHoursByClient =
+    parser.calculateTimeBetweenDateRange(interval);
+
+  const calculatedHoursByDayAndClient =
+    parser.getTimesAndDescriptionByDay(interval);
+
+  res
+    .status(200)
+    .json({ calculatedHoursByClient, calculatedHoursByDayAndClient });
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import Head from "next/head";
 import { useForm } from "react-hook-form";
 import { ErrorMessage } from "@hookform/error-message";
+import { format, toDate } from "date-fns";
 
 interface FileForm {
   timeTrackerFile: FileList;
@@ -9,20 +10,61 @@ interface FileForm {
   endDate: Date;
 }
 
+interface ProcessedData {
+  calculatedHoursByClient: { [clientName: string]: number };
+  calculatedHoursByDayAndClient: {
+    [date: string]: {
+      [clientName: string]: { hours: number; description: string[] };
+    };
+  };
+}
+
 // TODO fix types
 
-function ResultList({ result }: any) {
+function ResultList({ result }: { result: ProcessedData }) {
+  const { calculatedHoursByClient, calculatedHoursByDayAndClient } = result;
   return (
-    <div className="">
-      <ul>
-        {Object.keys(result).map((client, idx) => {
-          return (
-            <li key={idx}>
-              {client} - {Number(result[client]).toFixed(2)}
-            </li>
-          );
-        })}
-      </ul>
+    <div className="flex flex-col gap-2">
+      <div>
+        {calculatedHoursByClient && (
+          <ul>
+            {Object.keys(calculatedHoursByClient).map((client, idx) => {
+              return (
+                <li key={idx}>
+                  {client} -{" "}
+                  {Number(calculatedHoursByClient[client]).toFixed(2)}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+      <div>
+        <h3 className="font-semibold my-2">Summary by date and client</h3>
+        {calculatedHoursByDayAndClient &&
+          Object.keys(calculatedHoursByDayAndClient).map((day, i) => (
+            <ul key={`ul-${i}`}>
+              {format(new Date(day), "MM/dd/yyyy")}
+              {Object.keys(calculatedHoursByDayAndClient[day]).map(
+                (client, j) => (
+                  <li key={`li-${j}`} className="flex gap-1">
+                    <strong>{client}</strong>
+                    <span>
+                      {Number(
+                        calculatedHoursByDayAndClient[day][client].hours
+                      ).toFixed(2)}
+                    </span>
+                    <span>
+                      {calculatedHoursByDayAndClient[day][
+                        client
+                      ].description.join(", ")}
+                    </span>
+                  </li>
+                )
+              )}
+            </ul>
+          ))}
+      </div>
     </div>
   );
 }
@@ -34,7 +76,7 @@ export default function Home() {
     getValues,
     formState: { errors, isSubmitting },
   } = useForm<FileForm>();
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<ProcessedData | null>(null);
 
   const onSubmit = async (data: FileForm) => {
     const formData = new FormData();
@@ -102,7 +144,7 @@ export default function Home() {
         </form>
         {result && (
           <div>
-            <h2>
+            <h2 className="font-bold text-lg">
               Times between {getValues("startDate")} and {getValues("endDate")}
             </h2>
             <ResultList result={result} />

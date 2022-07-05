@@ -3,18 +3,20 @@ import {
   isWithinInterval,
   parseISO,
   format,
+  Interval,
 } from "date-fns";
 
 // TODO fix types
 
 type HoursByDayAndClient = {
-  [date: string]: HoursByClient | StartStopByClient;
+  [date: string]: HoursByClient;
 };
 
 type StartStopByClient = {
   [clientName: string]: {
     start: string[];
     stop: string[];
+    description: string[];
   };
 };
 
@@ -43,21 +45,25 @@ export function Parser(content: string) {
 
   function parseContentByDateAndClient() {
     const contentByDate = groupContentyDate();
-    const calculatedTimesByDay: any = {};
+    const calculatedTimesByDay: { [date: string]: StartStopByClient } = {};
 
     contentByDate.forEach((lines: string[], date) => {
       let timesByClients: StartStopByClient = {};
       lines.forEach((line) => {
-        const [client, _action, datetime] = line.split(",");
+        const [client, _action, datetime, description] = line.split(",");
         const action = _action as "start" | "stop";
 
         const clientData = timesByClients[client] || {
           start: [],
           stop: [],
+          description: [],
         };
         timesByClients[client] = {
           ...clientData,
           [action]: [...clientData[action], datetime],
+          ...(description
+            ? { description: [...clientData.description, description] }
+            : {}),
         };
       });
 
@@ -69,11 +75,11 @@ export function Parser(content: string) {
 
   function calculateTimeRange(start = [], stop = []) {
     const timeInMinutes =
-      start.reduce((prev, time, index) => {
+      start.reduce((prev, datetime, index) => {
         const stopTime = stop[index] && parseISO(stop[index]);
 
         const difference = stopTime
-          ? differenceInMinutes(stopTime, parseISO(time), {
+          ? differenceInMinutes(stopTime, parseISO(datetime), {
               roundingMethod: "floor",
             })
           : 1;
@@ -85,7 +91,7 @@ export function Parser(content: string) {
   }
 
   function calculateTimeByClient(timeRangeByClient: any) {
-    const calculatedHoursByClient: any = {};
+    const calculatedHoursByClient: HoursByClient = {};
     for (let client in timeRangeByClient) {
       const { start, stop } = timeRangeByClient[client];
 
@@ -109,18 +115,13 @@ export function Parser(content: string) {
 
   const lines = content
     .split("\n")
-    .filter((line) => line.split(",").length === 3)
+    .filter((line) => line.split(",").length >= 3)
     .map((line) => line.replace("\r", ""));
   const timesByDateAndClient = parseContentByDateAndClient();
   const calculatedTimesByDay = groupCalculatedHoursByDay();
 
   return {
-    calculateTimeBetweenDateRange(startDate: string, endDate: string) {
-      const interval = {
-        start: parseISO(startDate),
-        end: parseISO(endDate),
-      };
-
+    calculateTimeBetweenDateRange(interval: Interval) {
       const calculatedHoursByClient: any = {};
 
       Object.keys(calculatedTimesByDay).filter((date) => {
@@ -135,6 +136,30 @@ export function Parser(content: string) {
         });
       });
       return calculatedHoursByClient;
+    },
+    getTimesAndDescriptionByDay(interval: Interval) {
+      const timesAndDescriptionByClientAndDay: {
+        [date: string]: {
+          [clientName: string]: { hours: number; description: string[] };
+        };
+      } = {};
+
+      Object.keys(calculatedTimesByDay).filter((date) => {
+        const parsedDate = parseISO(date);
+        if (!isWithinInterval(parsedDate, interval)) {
+          return;
+        }
+        const clients = Object.keys(timesByDateAndClient[date]);
+        clients.forEach((client) => {
+          timesAndDescriptionByClientAndDay[date] = {
+            [client]: {
+              hours: calculatedTimesByDay[date][client],
+              description: timesByDateAndClient[date][client]?.description,
+            },
+          };
+        });
+      });
+      return timesAndDescriptionByClientAndDay;
     },
   };
 }
