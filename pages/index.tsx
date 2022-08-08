@@ -2,7 +2,7 @@ import { useState } from "react";
 import Head from "next/head";
 import { useForm } from "react-hook-form";
 import { ErrorMessage } from "@hookform/error-message";
-import { format, toDate } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 interface FileForm {
   timeTrackerFile: FileList;
@@ -44,7 +44,7 @@ function ResultList({ result }: { result: ProcessedData }) {
         {calculatedHoursByDayAndClient &&
           Object.keys(calculatedHoursByDayAndClient).map((day, i) => (
             <ul key={`ul-${i}`}>
-              {format(new Date(day), "MM/dd/yyyy")}
+              {format(parseISO(day), "MM/dd/yyyy")}
               {Object.keys(calculatedHoursByDayAndClient[day]).map(
                 (client, j) => (
                   <li key={`li-${j}`} className="flex gap-1">
