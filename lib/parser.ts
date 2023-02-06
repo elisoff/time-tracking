@@ -24,13 +24,16 @@ type HoursByClient = {
   [clientName: string]: number;
 };
 
-export function Parser(content: string) {
-  function groupContentyDate() {
+export function Parser(content: string, interval: Interval) {
+  function groupContentByDate() {
     const timesByDay = new Map();
 
     lines.forEach((line) => {
       const [, , datetime] = line.split(",");
       const parsedDatetime = parseISO(datetime);
+      if (!isWithinInterval(parsedDatetime, interval)) {
+        return;
+      }
       const date = format(parsedDatetime, "yyyy-MM-dd");
 
       if (timesByDay.has(date)) {
@@ -40,11 +43,12 @@ export function Parser(content: string) {
       }
     });
 
-    return timesByDay;
+    const sortedByDate = Array.from(timesByDay).sort();
+    return new Map(sortedByDate);
   }
 
   function parseContentByDateAndClient() {
-    const contentByDate = groupContentyDate();
+    const contentByDate = groupContentByDate();
     const calculatedTimesByDay: { [date: string]: StartStopByClient } = {};
 
     contentByDate.forEach((lines: string[], date) => {
@@ -121,7 +125,7 @@ export function Parser(content: string) {
   const calculatedTimesByDay = groupCalculatedHoursByDay();
 
   return {
-    calculateTimeBetweenDateRange(interval: Interval) {
+    calculateTimeBetweenDateRange() {
       const calculatedHoursByClient: any = {};
 
       Object.keys(calculatedTimesByDay).filter((date) => {
@@ -137,7 +141,7 @@ export function Parser(content: string) {
       });
       return calculatedHoursByClient;
     },
-    getTimesAndDescriptionByDay(interval: Interval) {
+    getTimesAndDescriptionByDay() {
       const timesAndDescriptionByClientAndDay: {
         [date: string]: {
           [clientName: string]: { hours: number; description: string[] };
@@ -152,6 +156,7 @@ export function Parser(content: string) {
         const clients = Object.keys(timesByDateAndClient[date]);
         clients.forEach((client) => {
           timesAndDescriptionByClientAndDay[date] = {
+            ...timesAndDescriptionByClientAndDay[date],
             [client]: {
               hours: calculatedTimesByDay[date][client],
               description: timesByDateAndClient[date][client]?.description,

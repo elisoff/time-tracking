@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Head from "next/head";
 import { useForm } from "react-hook-form";
 import { ErrorMessage } from "@hookform/error-message";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, previousMonday, previousSunday } from "date-fns";
 
 interface FileForm {
   timeTrackerFile: FileList;
@@ -44,10 +44,12 @@ function ResultList({ result }: { result: ProcessedData }) {
         {calculatedHoursByDayAndClient &&
           Object.keys(calculatedHoursByDayAndClient).map((day, i) => (
             <ul key={`ul-${i}`}>
-              {format(parseISO(day), "MM/dd/yyyy")}
+              <p className="font-semibold">
+                {format(parseISO(day), "MM/dd/yyyy")}
+              </p>
               {Object.keys(calculatedHoursByDayAndClient[day]).map(
                 (client, j) => (
-                  <li key={`li-${j}`} className="flex gap-1">
+                  <li key={`li-${j}`} className="flex gap-1.5 my-2">
                     <strong>{client}</strong>
                     <span>
                       {Number(
@@ -70,6 +72,10 @@ function ResultList({ result }: { result: ProcessedData }) {
 }
 
 export default function Home() {
+  const lastWeek = {
+    startDate: format(previousMonday(new Date()), "yyyy-MM-dd"),
+    endDate: format(previousSunday(new Date()), "yyyy-MM-dd"),
+  };
   const {
     handleSubmit,
     register,
@@ -86,8 +92,11 @@ export default function Home() {
       formData.append(`file${i}`, files.item(i) as Blob);
     }
 
+    const startDate = data.startDate || lastWeek.startDate;
+    const endDate = data.endDate || lastWeek.endDate;
+
     const response = await fetch(
-      `/api/process?start=${data.startDate}&end=${data.endDate}`,
+      `/api/process?start=${startDate}&end=${endDate}`,
       {
         method: "POST",
         body: formData,
@@ -125,15 +134,11 @@ export default function Home() {
             })}
           />
           <ErrorMessage errors={errors} name="timeTrackerFile" />
-          <label className="font-bold">Start and end date</label>
-          <input
-            type="date"
-            {...register("startDate", { required: "This field is required" })}
-          />
-          <input
-            type="date"
-            {...register("endDate", { required: "This field is required" })}
-          />
+          <label className="font-bold">
+            Start and end date (default last week)
+          </label>
+          <input type="date" {...register("startDate")} />
+          <input type="date" {...register("endDate")} />
 
           <button
             className="text-blue-900 bg-blue-100 px-2 py-2 disabled:opacity-75 cursor-pointer"
@@ -145,7 +150,8 @@ export default function Home() {
         {result && (
           <div>
             <h2 className="font-bold text-lg">
-              Times between {getValues("startDate")} and {getValues("endDate")}
+              Times between {getValues("startDate") || lastWeek.startDate} and{" "}
+              {getValues("endDate") || lastWeek.endDate}
             </h2>
             <ResultList result={result} />
           </div>

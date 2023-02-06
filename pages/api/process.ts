@@ -15,18 +15,15 @@ export default async function handler(
     throw new Error("Missing filter parameters");
   }
 
-  const parser = Parser(lines);
-
   const interval = {
     start: parseISO(start),
     end: parseISO(end),
   };
 
-  const calculatedHoursByClient =
-    parser.calculateTimeBetweenDateRange(interval);
+  const parser = Parser(lines, interval);
 
-  const calculatedHoursByDayAndClient =
-    parser.getTimesAndDescriptionByDay(interval);
+  const calculatedHoursByClient = parser.calculateTimeBetweenDateRange();
+  const calculatedHoursByDayAndClient = parser.getTimesAndDescriptionByDay();
 
   res
     .status(200)
