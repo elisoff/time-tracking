@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import Head from "next/head";
+import NextImage from "next/image";
 import { useForm } from "react-hook-form";
 import { ErrorMessage } from "@hookform/error-message";
 import { format, parseISO, previousMonday, previousSunday } from "date-fns";
@@ -19,9 +20,44 @@ interface ProcessedData {
   };
 }
 
+function copyToClipboard(text: string) {
+  return navigator.clipboard.writeText(text);
+}
+
 // TODO fix types
 
+const copyIcon = (
+  <NextImage
+    width="16"
+    height="16"
+    src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAYklEQVR4nGNgGE7Am4GB4QkDA8N/MjFB8JgCw/8TNp4EheQCulvgTWacgILakxgLKImTR8RYQG6Q/celb9QCGBgNIoJgNIgIApqXrv8HjQWPqV3YoQNPMi0BGe5Bhs8HKQAA5qOmsSMWnn4AAAAASUVORK5CYII="
+    alt="copy"
+  />
+);
+
 function ResultList({ result }: { result: ProcessedData }) {
+  const [copied, setCopied] = useState<number | null>(null);
+
+  const copiedEffect = (idx: number) => {
+    setCopied(idx);
+    setTimeout(() => {
+      setCopied(null);
+    }, 500);
+  };
+
+  const renderCopyButton = (text: string, index: number) => (
+    <button
+      type="button"
+      onClick={async () => {
+        await copyToClipboard(text);
+        copiedEffect(index);
+      }}
+      className="px-1 rounded hover:bg-slate-200"
+    >
+      {copyIcon}
+    </button>
+  );
+
   const { calculatedHoursByClient, calculatedHoursByDayAndClient } = result;
   return (
     <div className="flex flex-col gap-2">
@@ -48,21 +84,34 @@ function ResultList({ result }: { result: ProcessedData }) {
                 {format(parseISO(day), "MM/dd/yyyy")}
               </p>
               {Object.keys(calculatedHoursByDayAndClient[day]).map(
-                (client, j) => (
-                  <li key={`li-${j}`} className="flex gap-1.5 my-2">
-                    <strong>{client}</strong>
-                    <span>
-                      {Number(
-                        calculatedHoursByDayAndClient[day][client].hours
-                      ).toFixed(2)}
-                    </span>
-                    <span>
-                      {calculatedHoursByDayAndClient[day][
-                        client
-                      ].description.join(", ")}
-                    </span>
-                  </li>
-                )
+                (client, j) => {
+                  const hours = Number(
+                    calculatedHoursByDayAndClient[day][client].hours
+                  ).toFixed(2);
+
+                  const description =
+                    calculatedHoursByDayAndClient[day][client].description.join(
+                      ", "
+                    );
+
+                  return (
+                    <li
+                      key={`li-${j}`}
+                      className={`flex gap-1.5 my-2 p-1 ${
+                        copied === i ? "bg-lime-100" : ""
+                      }`}
+                    >
+                      <strong>{client}</strong>
+                      <span className="inline-flex gap-1">
+                        {hours}
+                        {renderCopyButton(hours, i)}
+                      </span>
+                      <span className="inline-flex gap-1">
+                        {description} {renderCopyButton(description, i)}
+                      </span>
+                    </li>
+                  );
+                }
               )}
             </ul>
           ))}
